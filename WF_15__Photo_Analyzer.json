@@ -1,0 +1,329 @@
+{
+  "name": "WF-15: Photo Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"is_valid\": { \"type\": \"boolean\" },\n        \"photo_description\": {\n          \"type\": \"string\",\n          \"description\": \"describe the appearance of the person(s), object(s) if any and the background in the image. Mention any colours of each if possible.\"\n        },\n\t\t\"reasons\": {\n          \"type\": \"array\",\n          \"items\": { \"type\": \"string\" }\n        }\n\t}\n}"
+      },
+      "id": "45580546-f537-4961-966c-c3c06fdecd9d",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        620,
+        600
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6baa3e08-8957-454e-8ee9-d5414a0ff990",
+              "name": "extractedUrl",
+              "type": "array",
+              "value": "={{ [$json.chatInput.match(/https:\\/\\/drive\\.google\\.com\\/file\\/d\\/[a-zA-Z0-9_-]+\\/[a-zA-Z0-9\\/?=_&-]+/)[0]] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "42642d76-b5ce-4ea5-9af5-8a0e63dcbfbf",
+      "name": "Photo URLs",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        340,
+        120
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.extractedUrl }}",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "id": "2a09e023-04d9-4037-8ccc-1cb25b8e6d51",
+      "name": "Download Photos",
+      "type": "n8n-nodes-base.googleDrive",
+      "position": [
+        -140,
+        380
+      ],
+      "typeVersion": 3,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "B9PHGBZ5pDkKfNQF",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "width": 1024,
+        "height": 1024,
+        "resizeOption": "onlyIfLarger",
+        "options": {}
+      },
+      "id": "ee0bafd3-8383-4702-9a6d-f549ba144573",
+      "name": "Resize For AI",
+      "type": "n8n-nodes-base.editImage",
+      "position": [
+        120,
+        380
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Assess if the image is a valid according to the passport photo criteria as set by the UK Government.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You help verify passport photo validity.\n\n## Rules for digital photos\nhttps://www.gov.uk/photos-for-passports\n\n### The quality of your digital photo\nYour photo must be:\n* clear and in focus\n* in colour\n* unaltered by computer software\n* at least 600 pixels wide and 750 pixels tall\n* at least 50KB and no more than 10MB\n\n### What your digital photo must show\nThe digital photo must:\n* contain no other objects or people\n* be taken against a plain white or light-coloured background\n* be in clear contrast to the background\n* not have ‘red eye’\n* If you’re using a photo taken on your own device, include your head, shoulders and upper body. Do not crop your photo - it will be done for you.\n\nIn your photo you must:\n* be facing forwards and looking straight at the camera\n* have a plain expression and your mouth closed\n* have your eyes open and visible\n* not have hair in front of your eyes\n* not have a head covering (unless it’s for religious or medical reasons)\n* not have anything covering your face\n* not have any shadows on your face or behind you - shadows on light background are okay\n* Do not wear glasses in your photo unless you have to do so. If you must wear glasses, they cannot be sunglasses or tinted glasses, and you must make sure your eyes are not covered by the frames or any glare, reflection or shadow.\n\n### Photos of babies and children\n* Children must be on their own in the picture. Babies must not be holding toys or using dummies.\n* Children under 6 do not have to be looking directly at the camera or have a plain expression.\n* Children under one do not have to have their eyes open. You can support their head with your hand, but your hand must not be visible in the photo.\n* Children under one should lie on a plain light-coloured sheet. Take the photo from above.\n\n"
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "id": "4f124b15-9647-4fdc-a378-7d9be8203b75",
+      "name": "Passport Photo Validator",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        400,
+        400
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        620
+      ],
+      "id": "ec82c337-a4a0-4249-81f6-98f4b5ec909d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ieWS9WWeYylZWArQ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "allowFileUploads": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -140,
+        100
+      ],
+      "id": "67921e05-6c0b-4eb1-8d28-cbca0765a657",
+      "name": "When chat message received",
+      "webhookId": "654f36f7-ca6d-461e-91ad-db15ddf645f7"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "chatInput",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        80,
+        100
+      ],
+      "id": "1097bee4-3ca7-4f41-bd26-b77dd29d2a48",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "extractedUrl",
+        "options": {}
+      },
+      "id": "ed688c5e-3ffc-4209-9dae-e0767512fba8",
+      "name": "Photos To List",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        600,
+        120
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8967ace7-ff94-450f-9629-8f69d36ceb2a",
+              "name": "chatResponse",
+              "value": "={{ \"Passport Photo Validation Result:\\n\\n\" + \n   \"✅ Valid: \" + ($json.output.is_valid ? \"Yes\" : \"No\") + \"\\n\\n\" +\n   \"📷 Description: \" + $json.output.photo_description + \"\\n\\n\" +\n   \"❗ Reasons: \\n\" + $json.output.reasons.map(function(reason){return \"- \" + reason}).join(\"\\n\") \n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        760,
+        400
+      ],
+      "id": "ad587324-00fe-4eb0-bc00-785864feff59",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "## WF-15: Photo Analyzer",
+        "height": 80,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        160,
+        -20
+      ],
+      "typeVersion": 1,
+      "id": "8372f695-47dc-4145-887e-19bb1515b968",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Photo URLs": {
+      "main": [
+        [
+          {
+            "node": "Photos To List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resize For AI": {
+      "main": [
+        [
+          {
+            "node": "Passport Photo Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Photos": {
+      "main": [
+        [
+          {
+            "node": "Resize For AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Passport Photo Validator",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Passport Photo Validator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Photo URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Photos To List": {
+      "main": [
+        [
+          {
+            "node": "Download Photos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passport Photo Validator": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3e221c25-485b-494b-b9a9-a02b8904031b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "32abcfe23a703a294bd580240a37e884f6782ba42aeff437bff7e0a3461ea3a4"
+  },
+  "id": "CskpzDE5vKEKC5lH",
+  "tags": []
+}
